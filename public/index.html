@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>オンラインマルバツゲーム</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+        #gameBoard {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 10px;
+        }
+        .cell {
+            width: 100px;
+            height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            background-color: #fff;
+            border: 2px solid #333;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameBoard"></div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const gameBoard = document.getElementById('gameBoard');
+        let currentPlayer = 'X';
+        let gameActive = true;
+
+        // ゲームボードの初期化
+        const board = Array(9).fill('');
+        function renderBoard() {
+            gameBoard.innerHTML = '';
+            board.forEach((value, index) => {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.textContent = value;
+                cell.addEventListener('click', () => handleClick(index));
+                gameBoard.appendChild(cell);
+            });
+        }
+
+        function handleClick(index) {
+            if (board[index] === '' && gameActive) {
+                board[index] = currentPlayer;
+                socket.emit('move', { index, player: currentPlayer });
+                checkWin();
+                currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+                renderBoard();
+            }
+        }
+
+        // サーバーからの更新を受け取る
+        socket.on('move', (data) => {
+            board[data.index] = data.player;
+            renderBoard();
+        });
+
+        // 勝利条件の確認
+        function checkWin() {
+            const winConditions = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8],
+                [0, 3, 6], [1, 4, 7], [2, 5, 8],
+                [0, 4, 8], [2, 4, 6]
+            ];
+            winConditions.forEach(condition => {
+                const [a, b, c] = condition;
+                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                    alert(`${board[a]}の勝利です！`);
+                    gameActive = false;
+                }
+            });
+            if (board.every(cell => cell !== '')) {
+                alert('引き分けです！');
+                gameActive = false;
+            }
+        }
+
+        renderBoard();
+    </script>
+</body>
+</html>
